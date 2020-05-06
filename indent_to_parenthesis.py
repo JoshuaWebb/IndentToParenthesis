@@ -1,11 +1,17 @@
 import sublime
 import sublime_plugin
 
+PLUGIN_KEY = 'IndentToParenthesis'
+SELECTION_MARKER_KEY = PLUGIN_KEY + '.saved_selection'
+SELECTION_MARKER_SCOPE = 'indent_to_parenthesis.saved_selection'
 
 class IndentToParenthesisCommand(sublime_plugin.TextCommand):
   def run(self, edit):
     view = self.view
     selections = view.sel()
+
+    handled_regions = []
+    unhandled_regions = False
     for selection in selections:
       line_upto_cursor = view.substr(
           sublime.Region(view.line(selection).begin(), selection.end()))
@@ -16,9 +22,28 @@ class IndentToParenthesisCommand(sublime_plugin.TextCommand):
       whitespace_region = self.expand_to_whitespace(selection.begin())
       view.erase(edit, whitespace_region)
       if param_column:
-        view.insert(edit, whitespace_region.a, '\n%s' % (' ' * param_column))
+        chars = view.insert(edit, whitespace_region.a, '\n%s' % (' ' * param_column))
+        new_cursor = sublime.Region(whitespace_region.a + chars, whitespace_region.a + chars)
+        handled_regions.append(new_cursor)
       else:
-        view.run_command('insert', {'characters': '\n'})
+        unhandled_regions = True
+
+    # NOTE: We let sublime handle the individual levels of indentation by inserting
+    #  a newline once for all the unhandled selections. (Depends on the auto-indent
+    #  mode of sublime).
+    if unhandled_regions:
+      # NOTE: We don't want extra newlines after the selections we've already handled,
+      #  but the newlines/indentations for the remaining selections will change the
+      #  locations of the regions we have handled so we can't just subtract them and
+      #  add them back after because they'll be out-of-sync, so we track them using
+      #  hidden regions so they get updated automatically.
+      view.add_regions(SELECTION_MARKER_KEY, handled_regions, SELECTION_MARKER_SCOPE, flags=sublime.HIDDEN)
+      for r in reversed(handled_regions):
+        selections.subtract(r)
+
+      view.run_command('insert', {'characters': '\n'})
+
+      selections.add_all(view.get_regions(SELECTION_MARKER_KEY))
 
   def find_last_unmatched_open_paren(self, line):
     '''Returns offset of the last unmatched opening parenthesis on the line'''
