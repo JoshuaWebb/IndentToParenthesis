@@ -2,7 +2,7 @@
   {"keys": ["enter"], "command": "indent_to_parenthesis",
    "context": [
      {"key": "setting.translate_tabs_to_spaces"},
-     {"key": "preceding_text", "operator": "regex_contains", "operand": "\\([^(]+,\\s*$", "match_all": false}
+     {"key": "preceding_text", "operator": "regex_contains", "operand": "\\([^(]+[,;]\\s*$", "match_all": false}
    ]
   }
 ]
