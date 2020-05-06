@@ -8,9 +8,12 @@ class IndentToParenthesisCommand(sublime_plugin.TextCommand):
     selections = view.sel()
     for selection in selections:
       line_upto_cursor = view.substr(
-          sublime.Region(view.line(selection).a, selection.b))
+          sublime.Region(view.line(selection).begin(), selection.end()))
       param_column = self.find_last_unmatched_open_paren(line_upto_cursor)
-      whitespace_region = self.expand_to_whitespace(selection.a)
+
+      view.erase(edit, selection)
+
+      whitespace_region = self.expand_to_whitespace(selection.begin())
       view.erase(edit, whitespace_region)
       if param_column:
         view.insert(edit, whitespace_region.a, '\n%s' % (' ' * param_column))
